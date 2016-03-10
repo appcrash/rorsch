@@ -1,0 +1,12 @@
+doctype html
+html
+    head
+        style
+            include style.css
+    body
+        h1= message
+
+        div
+            form(action="/process" method="post" class="form")
+                input(type="text" name="loc" size=40)
+                input(type="submit" value="Go")

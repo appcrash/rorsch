@@ -1,2 +1,2 @@
 # rorsch
-online web *p*r*o*x*y* by node.js
+online web pr0xy by node.js
