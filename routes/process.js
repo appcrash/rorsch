@@ -1,30 +1,47 @@
 var express = require('express');
 var router = express.Router();
 var http = require('http');
+var common = require('../common');
+var url = require('url');
 
-router.post('/',function(req,res) {
+router.get('/',function(req,res) {
     // console.log(req.headers);
-    // console.log(req.body.loc);
 
-    var loc = req.body.loc;
+    var loc = req.query.loc;
+    loc = loc.replace(/^(https?:\/\/)?/,(_,p1) => {
+        if (p1 === undefined) {
+            return 'http://';
+        }
+        return p1;
+    });
+
+    loc = url.parse(loc.trim());
 
     var srv_req = http.request({
-        host : loc,
-        port : 80,
-        path : '/',
+        host : loc.host,
+        port : loc.port,
+        path : loc.path,
+        protocol : loc.protocol,
         method : 'GET'
     },(srv_res) => {
-        console.log(srv_res.statusCode);
         var data = '';
 
+        srv_res.setEncoding('binary');
         srv_res.on('data',(chunk) => {
             data += chunk;
         });
         srv_res.on('end',() => {
-            res.writeHead(200,{
-                'Content-Type' : 'text/html;',
-            });
-            res.write(data);
+            res.setHeader('Content-Type',srv_res.headers['content-type']);
+            res.writeHead(200);
+
+            var newdata = data.replace(/(href|src)\s*=\s*['"]?([^'"]{1,1000})['"]?/mg,
+                (match,p1,p2) => {
+                    var new_url = common.proxyUrl(req.headers.host,p2);
+                    return `${p1}=${new_url}`;
+                });
+
+            res.write(newdata,'binary');
+
             res.end();
         });
     });
