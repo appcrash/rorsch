@@ -24,6 +24,7 @@ router.get('/',function(req,res) {
         protocol : loc.protocol,
         method : 'GET'
     },(srv_res) => {
+
         var data = '';
 
         srv_res.setEncoding('binary');
@@ -31,11 +32,20 @@ router.get('/',function(req,res) {
             data += chunk;
         });
         srv_res.on('end',() => {
-            res.setHeader('Content-Type',srv_res.headers['content-type']);
+            res.contentType = srv_res.headers['content-type'];
+
+            var sc = srv_res.statusCode;
+            if (sc === 301 || sc === 302) {
+                var new_loc = srv_res.headers['location'];
+                res.redirect(sc,common.proxyUrl(req.headers.host,new_loc));
+                return;
+            }
+
             res.writeHead(200);
 
             var newdata = data.replace(/(href|src)\s*=\s*['"]?([^'"]{1,1000})['"]?/mg,
                 (match,p1,p2) => {
+                    // console.log('url is ' + p2);
                     var new_url = common.proxyUrl(req.headers.host,p2);
                     return `${p1}=${new_url}`;
                 });
