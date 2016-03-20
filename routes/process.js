@@ -3,6 +3,7 @@ var router = express.Router();
 var http = require('http');
 var common = require('../common');
 var url = require('url');
+var logger = require('../log').debug;
 
 router.get('/',function(req,res) {
     // console.log(req.headers);
@@ -45,7 +46,7 @@ router.get('/',function(req,res) {
 
             var newdata = data.replace(/(href|src)\s*=\s*['"]?([^'"]{1,1000})['"]?/mg,
                 (match,p1,p2) => {
-                    // console.log('url is ' + p2);
+                    // logger.debug('url is ' + p2);
                     var new_url = common.proxyUrl(req.headers.host,p2);
                     return `${p1}=${new_url}`;
                 });
