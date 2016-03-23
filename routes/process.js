@@ -4,10 +4,10 @@ var http = require('http');
 var common = require('../common');
 var url = require('url');
 var logger = require('../log').debug;
+var cookie = require('cookie');
+
 
 router.get('/',function(req,res) {
-    // console.log(req.headers);
-
     var loc = req.query.loc;
     loc = loc.replace(/^(https?:\/\/)?/,(_,p1) => {
         if (p1 === undefined) {
@@ -16,7 +16,11 @@ router.get('/',function(req,res) {
         return p1;
     });
 
+    logger.debug('origin loc is ' + loc);
+
     loc = url.parse(loc.trim());
+
+    logger.debug('http.request with host: ' + loc.host);
 
     var srv_req = http.request({
         host : loc.host,
@@ -38,16 +42,39 @@ router.get('/',function(req,res) {
             var sc = srv_res.statusCode;
             if (sc === 301 || sc === 302) {
                 var new_loc = srv_res.headers['location'];
+                if (!/^https?/.test(new_loc)) {
+                    // relative path
+                    new_loc = `${loc.host}${new_loc}`;
+                }
+                logger.debug('redirect with origin host %s  ,  new loc %s',req.headers.host,new_loc);
                 res.redirect(sc,common.proxyUrl(req.headers.host,new_loc));
                 return;
+            }
+
+            var set_cookie = srv_res.headers['set-cookie'];
+            var parsed_cookie;
+            if (!!set_cookie) {
+                set_cookie = set_cookie.join(';');
+                parsed_cookie = cookie.parse(set_cookie,{});
+                logger.debug(JSON.stringify(parsed_cookie,null,2));
             }
 
             res.writeHead(200);
 
             var newdata = data.replace(/(href|src)\s*=\s*['"]?([^'"]{1,1000})['"]?/mg,
                 (match,p1,p2) => {
-                    // logger.debug('url is ' + p2);
-                    var new_url = common.proxyUrl(req.headers.host,p2);
+                    var replaced_url = p2;
+                    if (!/^https?/.test(replaced_url)) {
+                        replaced_url = replaced_url.replace(/^(\/)/,() => {
+                            // prepend '/' if missing
+                            return '/';
+                        });
+
+                        // relative to absolute url
+                        replaced_url = `${loc.host}${replaced_url}`;
+                        logger.debug('%s replaced to %s',p2,replaced_url);
+                    }
+                    var new_url = common.proxyUrl(req.headers.host,replaced_url);
                     return `${p1}=${new_url}`;
                 });
 
@@ -58,7 +85,7 @@ router.get('/',function(req,res) {
     });
 
     srv_req.on('error',(e) => {
-        console.log(e.message);
+        logger.error(e.message);
     });
     srv_req.end();
 });
