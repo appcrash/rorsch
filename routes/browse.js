@@ -7,8 +7,20 @@ var logger = require('../log').debug;
 var cookie = require('cookie');
 
 
-router.get('/',function(req,res) {
-    var loc = req.query.loc;
+var prefix = require('path').basename(__filename,'.js');
+
+router.get(/.*/,function(req,res) {
+    var pathname = req.path;
+
+    if (pathname === undefined) {
+        res.redirect(302,'/');
+        return;
+    }
+
+    // remove prefix '/' if any
+    pathname = pathname.replace(/^\//,'');
+
+    var loc = decodeURIComponent(pathname);
     loc = loc.replace(/^(https?:\/\/)?/,(_,p1) => {
         if (p1 === undefined) {
             return 'http://';
@@ -16,11 +28,12 @@ router.get('/',function(req,res) {
         return p1;
     });
 
-    logger.debug('origin loc is ' + loc);
+
+    logger.info('origin loc is ' + loc);
 
     loc = url.parse(loc.trim());
 
-    logger.debug('http.request with host: ' + loc.host);
+    logger.info('http.request with host: ' + loc.host);
 
     var srv_req = http.request({
         host : loc.host,
@@ -46,7 +59,8 @@ router.get('/',function(req,res) {
                     // relative path
                     new_loc = `${loc.host}${new_loc}`;
                 }
-                logger.debug('redirect with origin host %s  ,  new loc %s',req.headers.host,new_loc);
+                logger.debug('redirect with origin loc %s%s  <==> new loc %s',
+                    loc.host,loc.path,new_loc);
                 res.redirect(sc,common.proxyUrl(req.headers.host,new_loc));
                 return;
             }
@@ -56,7 +70,7 @@ router.get('/',function(req,res) {
             if (!!set_cookie) {
                 set_cookie = set_cookie.join(';');
                 parsed_cookie = cookie.parse(set_cookie,{});
-                logger.debug(JSON.stringify(parsed_cookie,null,2));
+                // logger.debug(JSON.stringify(parsed_cookie,null,2));
             }
 
             res.writeHead(200);

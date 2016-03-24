@@ -5,7 +5,8 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 
-var process = require('./routes/process');
+var go = require('./routes/go');
+var browse = require('./routes/browse');
 var app = express();
 
 // view engine setup
@@ -20,7 +21,8 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/process',process);
+app.use('/go',go);
+app.use('/browse',browse);
 app.get('/',function(req,res){
   res.render('index',{message : 'hello'});
 });

@@ -5,7 +5,6 @@ exports.proxyUrl = (host,href) => {
     return url.format({
         host : host,
         protocol : 'http',
-        pathname : 'process',
-        search : `loc=${encoded_href}`
+        pathname : `browse/${encoded_href}`
     });
 };
