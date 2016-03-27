@@ -1,9 +1,8 @@
 var express = require('express');
 var router = express.Router();
 var http = require('http');
-var common = require('../common');
 var url = require('url');
-var logger = require('../log').debug;
+var logger = require('../lib/log').debug;
 
 
 router.get(/.*/,function(req,res) {
