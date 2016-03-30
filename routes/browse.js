@@ -23,7 +23,9 @@ router.get(/.*/,function(req,res) {
     pathname = pathname.replace(/^\//,'');
 
     var loc = decodeURIComponent(pathname);
-    loc = loc.replace(/^(https?:\/\/)?/,(_,p1) => {
+    var origin_loc = loc;
+
+    loc = loc.replace(/^\s*(https?:\/\/)?/,(_,p1) => {
         if (p1 === undefined) {
             return 'http://';
         }
@@ -31,31 +33,42 @@ router.get(/.*/,function(req,res) {
     });
 
 
-    var origin_loc = loc;
     loc = url.parse(loc.trim());
 
-    // logger.info('http.request with host: ' + loc.host);
+    // logger.info('origin loc is %s',origin_loc);
+    // logger.info('http.request with host: %s,  path: %s',loc.host,loc.path);
+
+
+    var option = {
+        app_host : req.headers.host,  // the domain name of this proxy app
+        proxied_host : loc.host,  // all relative links should relative to this host
+        proxied_path : loc.pathname
+    };
+
+
     var request = loc.protocol === 'https:' ? https.request : http.request;
 
     var srv_req = request({
         host : loc.host,
         port : loc.port,
         path : loc.path,
-        protocol : loc.protocol,
         method : 'GET'
     },(srv_res) => {
         var all_chunk = [];
 
+
+
         var sc = srv_res.statusCode;
         if (sc === 301 || sc === 302 || sc === 303) {
             var new_loc = srv_res.headers['location'];
-            if (!/^https?/.test(new_loc)) {
-                // relative path
-                new_loc = `${loc.host}${new_loc}`;
-            }
-            logger.debug('redirect with origin loc %s%s  <==> new loc %s',
-                loc.host,loc.path,new_loc);
-            res.redirect(sc,common.proxyUrl(req.headers.host,new_loc));
+            // if (!/^https?/.test(new_loc)) {
+            //     // relative path
+            //     new_loc = `${loc.host}${new_loc}`;
+            // }
+
+            var redirect = common.proxyUrl(option,new_loc)
+            logger.debug('redirect is ' + redirect);
+            res.redirect(sc,redirect);
             return;
         }
 
@@ -112,11 +125,13 @@ router.get(/.*/,function(req,res) {
                     }
 
                     data = defunc(data);
-                    logger.warn(data.slice(0,1000));
                 }
 
                 data = data.toString('binary');
-                var newdata = parser(req,loc,data);
+
+
+
+                var newdata = parser(option,data);
 
                 try {
                     res.write(newdata,'binary');
