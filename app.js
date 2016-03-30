@@ -1,9 +1,11 @@
+var process = require('process');
 var express = require('express');
 var path = require('path');
 var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+
 
 var go = require('./routes/go');
 var browse = require('./routes/browse');
@@ -59,6 +61,9 @@ app.use(function(err, req, res, next) {
 });
 
 
-app.listen(8080,function() {
+app.set('port', (process.env.PORT || 5000));
+
+
+app.listen(app.get('port'),function() {
   console.log('app started');
 });
