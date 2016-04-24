@@ -11,8 +11,18 @@ var zlib = require('zlib');
 
 
 
-router.get(/.*/,function(req,res) {
+router.all(/.*/,function(req,res) {
     var pathname = req.path;
+    var query = common.parse_query(req.originalUrl).query;
+    var method = req.method;
+
+    if (!(method === 'GET' || method == 'POST')) {
+        res.render('error', {
+            message: `method ${method} not supported yet`,
+            error: {}
+        });
+        return;
+    }
 
     if (pathname === undefined) {
         res.redirect(302,'/');
@@ -23,7 +33,7 @@ router.get(/.*/,function(req,res) {
     pathname = pathname.replace(/^\//,'');
 
     var loc = decodeURIComponent(pathname);
-    var origin_loc = loc;
+    var origin_path = loc;
 
     loc = loc.replace(/^\s*(https?:\/\/)?/,(_,p1) => {
         if (p1 === undefined) {
@@ -35,7 +45,7 @@ router.get(/.*/,function(req,res) {
 
     loc = url.parse(loc.trim());
 
-    // logger.info('origin loc is %s',origin_loc);
+    // logger.info('origin path is %s',origin_path);
     // logger.info('http.request with host: %s,  path: %s, pathname: %s',loc.host,loc.path,loc.pathname);
 
 
@@ -67,24 +77,40 @@ router.get(/.*/,function(req,res) {
         req_headers['cookie'] = cookie_str;
     }
 
-    var srv_req = request({
+    var srv_req;
+
+    if (method === 'POST') {
+        for (var h in req.headers) {
+            if (h !== 'cookie') {
+                logger.debug(`set header ${h} for post request`);
+                req_headers[h] = req.headers[h];
+            }
+        }
+    }
+
+    var srv_req_path = loc.path;
+    if (!!query) {
+        // append query string without encoding it
+        srv_req_path += '?' + query;
+        // logger.info('srv_req_path is ',srv_req_path);
+    }
+
+    srv_req = request({
         host : loc.host,
         port : loc.port,
-        path : loc.path,
-        method : 'GET',
+        path : srv_req_path,
+        method : method,
         headers : req_headers
-    },(srv_res) => {
+    });
+
+    srv_req.on('response',(srv_res) => {
         var all_chunk = [];
 
         var sc = srv_res.statusCode;
         if (sc === 301 || sc === 302 || sc === 303) {
             var new_loc = srv_res.headers['location'];
-            // if (!/^https?/.test(new_loc)) {
-            //     // relative path
-            //     new_loc = `${loc.host}${new_loc}`;
-            // }
-
             var redirect = common.proxyUrl(option,new_loc)
+
             logger.debug('redirect is ' + redirect);
             res.redirect(sc,redirect);
             return;
@@ -172,7 +198,13 @@ router.get(/.*/,function(req,res) {
     srv_req.on('error',(e) => {
         logger.error(e.message);
     });
-    srv_req.end();
+
+    // forward post data to server intactly
+    if (method === 'POST') {
+        req.pipe(srv_req);
+    } else {
+        srv_req.end();
+    }
 });
 
 
