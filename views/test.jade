@@ -1,0 +1,12 @@
+doctype html
+html
+    head
+        style
+            include style.css
+    body
+        div
+            form(action="http://posttestserver.com/post.php" method="post"
+                        enctype="multipart/form-data" class="form")
+                input(type="text" name="post_text" size=40)
+                input(type="file" name="post_file")
+                input(type="submit" value="Post")

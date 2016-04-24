@@ -76,13 +76,14 @@ router.all(/.*/,function(req,res) {
         // logger.info(cookie_str);
         req_headers['cookie'] = cookie_str;
     }
+    req_headers['user-agent'] = 'Mozilla/5.0 (X11; CrOS x86_64 7834.70.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.112 Safari/537.36';
 
     var srv_req;
 
     if (method === 'POST') {
         for (var h in req.headers) {
-            if (h !== 'cookie') {
-                logger.debug(`set header ${h} for post request`);
+            if (h !== 'cookie' && h !== 'host') {
+                logger.debug(`set header ${h} => ${req.headers[h]}`);
                 req_headers[h] = req.headers[h];
             }
         }
@@ -118,7 +119,7 @@ router.all(/.*/,function(req,res) {
 
         var ct_str = srv_res.headers['content-type'];
         if (ct_str === undefined) {
-            var err = `undefined content-type, loc: ${origin_loc}`;
+            var err = `undefined content-type, path: ${origin_path}`;
             res.status(404).send(err);
             return;
         }
@@ -138,7 +139,6 @@ router.all(/.*/,function(req,res) {
             // var cookie_str = `!!K=${encoded_cookie}; Path=/browse${req.path}`;
             var cookie_str = `!!K=${encoded_cookie};`;
 
-            // logger.debug('cookie_str');
             // logger.debug(cookie_str);
 
             res.setHeader('set-cookie',cookie_str);
@@ -179,9 +179,6 @@ router.all(/.*/,function(req,res) {
                 }
 
                 data = data.toString('binary');
-
-
-
                 var newdata = parser(option,data);
 
                 try {
@@ -199,8 +196,10 @@ router.all(/.*/,function(req,res) {
         logger.error(e.message);
     });
 
-    // forward post data to server intactly
+
     if (method === 'POST') {
+        // forward post data to server intactly
+        // pipe would call end() when client post request ends
         req.pipe(srv_req);
     } else {
         srv_req.end();

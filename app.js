@@ -9,6 +9,7 @@ var bodyParser = require('body-parser');
 
 var go = require('./routes/go');
 var browse = require('./routes/browse');
+var test = require('./routes/test');
 var app = express();
 
 // view engine setup
@@ -18,15 +19,16 @@ app.set('view engine', 'jade');
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 // app.use(logger('dev'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+// app.use(bodyParser.json());
+// app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/go',go);
 app.use('/browse',browse);
+app.use('/test',test);
 app.get('/',function(req,res){
-  res.render('index',{message : 'hello'});
+  res.render('index',{message : 'input url'});
 });
 
 
